@@ -6,9 +6,6 @@ import hex.genmodel.attributes.parameters.KeyValue;
 
 import java.io.Serializable;
 import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Map;
-import java.util.TreeMap;
 
 /**
  * Represents model's variables and their relative importances in the model.
@@ -56,12 +53,7 @@ public class VariableImportances implements Serializable {
         for (int i = 0; i < _importances.length; i++) {
             sortedImportances[i] = new KeyValue(_variables[i], _importances[i]);
         }
-        Arrays.sort(sortedImportances, new Comparator<KeyValue>() {
-            @Override
-            public int compare(KeyValue o1, KeyValue o2) {
-                return o1.getValue() > o2.getValue() ? -1 : 0;
-            }
-        });
+        Arrays.sort(sortedImportances, new KeyValue.DescComparator(false));
         return Arrays.copyOfRange(sortedImportances, 0, n);
     }
 }
