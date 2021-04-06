@@ -53,6 +53,7 @@ from h2o.estimators.kmeans import H2OKMeansEstimator
 from h2o.estimators.naive_bayes import H2ONaiveBayesEstimator
 from h2o.estimators.random_forest import H2ORandomForestEstimator
 from h2o.transforms.decomposition import H2OPCA
+from h2o.estimators.infogram import H2OInfoGramEstimator
 from h2o.utils.typechecks import is_type
 from h2o.utils.shared_utils import temp_ctr  # unused in this file  but exposed here for symmetry with rest_ctr
 
@@ -335,6 +336,7 @@ def javapredict(algo, equality, train, test, x, y, compile_only=False, separator
     elif algo == "naive_bayes": model = H2ONaiveBayesEstimator(**kwargs)
     elif algo == "kmeans": model = H2OKMeansEstimator(**kwargs)
     elif algo == "pca": model = H2OPCA(**kwargs)
+    elif algo == "infogram": model = H2OInfoGramEstimator(**kwargs)
     else: raise ValueError
     if algo == "kmeans" or algo == "pca": model.train(x=x, training_frame=train)
     else: model.train(x=x, y=y, training_frame=train)
