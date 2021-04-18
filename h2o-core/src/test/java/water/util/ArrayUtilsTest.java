@@ -3,6 +3,7 @@ package water.util;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.Random;
 import java.util.stream.IntStream;
 
@@ -340,4 +341,9 @@ public class ArrayUtilsTest {
     assertEquals("[\"1\", \"2\", \"3\"]", toStringQuotedElements(names, 4));
   }
 
+  @Test
+  public void testIndexOfLinear() {
+    String[] arr = new String[]{"AGE", "RACE", "DPROS", "DCAPS", "PSA", "VOL", "GLEASON", "BiasTerm"};
+    assertEquals("Index of value is not correct", 1, ArrayUtils.indexOfLinear(arr, "RACE"));
+  }
 }
