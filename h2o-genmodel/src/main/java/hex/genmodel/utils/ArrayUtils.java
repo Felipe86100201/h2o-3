@@ -166,6 +166,7 @@ public class ArrayUtils {
     return tmp;
   }
 
+  @SafeVarargs
   public static <T> T[] appendGeneric(T[] a, T... b) {
     if( a==null ) return b;
     T[] tmp = Arrays.copyOf(a,a.length+b.length);
