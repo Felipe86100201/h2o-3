@@ -253,5 +253,21 @@ public class TestFrameBuilderTest extends TestUtil {
       Scope.exit();
     }
   }
+
+  @Test
+  public void testSequenceIntDataForCol() {
+    Scope.enter();
+    int numRows = 10;
+    try {
+      Frame f = new TestFrameBuilder()
+              .withVecTypes(Vec.T_NUM)
+              .withSequenceIntDataForCol(0, 0, numRows)
+              .build();
+      Scope.track(f);
+      assertVecEquals(Vec.makeSeq(0, numRows), f.vec(0), 0);
+    } finally {
+      Scope.exit();
+    }
+  }
   
 }
