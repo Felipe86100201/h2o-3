@@ -143,8 +143,7 @@ public class FrameUtilsTest extends TestUtil {
     int rowsToTest = new Random().nextInt(numRows);
     Log.info("Row to test in testIDColumnOperationEncoder was chosen to be: " + rowsToTest);
     try {
-      FrameTestUtil.Create1IDColumn tempO = new FrameTestUtil.Create1IDColumn(numRows);
-      Frame f = tempO.doAll(tempO.returnFrame()).returnFrame();
+      Frame f = new Frame(Vec.makeSeq(0, numRows));
       Scope.track(f);
 
       ArrayList<Integer> badRows = new FrameTestUtil.CountAllRowsPresented(0, f).doAll(f).findMissingRows();

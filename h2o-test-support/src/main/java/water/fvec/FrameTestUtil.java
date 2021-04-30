@@ -134,39 +134,6 @@ public class FrameTestUtil {
   }
 
   /**
-   * This task will create a Frame containing row indices
-   */
-  public static class Create1IDColumn extends MRTask<Create1IDColumn> {
-    Frame _oneColumnFrame;
-
-    public Create1IDColumn(int numRows) {
-      CreateFrame cf = new CreateFrame();
-      cf.rows=numRows;
-      cf.cols=1;
-      cf.categorical_fraction = 0.0;
-      cf.integer_fraction = 1.0;
-      cf.binary_fraction = 0.0;
-      cf.time_fraction = 0.0;
-      cf.string_fraction = 0.0;
-      cf.binary_ones_fraction = 0.0;
-      cf.has_response=false;
-      _oneColumnFrame = cf.execImpl().get();
-    }
-
-    public void map(Chunk chks) {
-      int numRows = chks.len();
-      int rowOffset = (int) chks.start();
-      for (int index = 0; index < numRows; index++) {
-        chks.set(index, (rowOffset+index));
-      }
-    }
-
-    public Frame returnFrame() {
-      return _oneColumnFrame;
-    }
-  }
-
-  /**
    * For a column that contains row indices, this task will count and make sure all
    * the rows are present by looking for this row indices.
    */
