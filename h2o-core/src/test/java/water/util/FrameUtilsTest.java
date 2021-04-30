@@ -143,7 +143,10 @@ public class FrameUtilsTest extends TestUtil {
     int rowsToTest = new Random().nextInt(numRows);
     Log.info("Row to test in testIDColumnOperationEncoder was chosen to be: " + rowsToTest);
     try {
-      Frame f = new Frame(Vec.makeSeq(0, numRows));
+      Frame f = new TestFrameBuilder()
+              .withVecTypes(Vec.T_NUM)
+              .withSequenceIntDataForCol(0, 0, numRows)
+              .build();
       Scope.track(f);
 
       ArrayList<Integer> badRows = new FrameTestUtil.CountAllRowsPresented(0, f).doAll(f).findMissingRows();
