@@ -1,12 +1,7 @@
 package hex.genmodel.algos.tree;
 
 import hex.genmodel.PredictContributions;
-import hex.genmodel.attributes.parameters.KeyValue;
-import hex.genmodel.easy.exception.PredictException;
 import hex.genmodel.utils.ArrayUtils;
-
-import java.util.Arrays;
-import java.util.Comparator;
 
 public abstract class ContributionsPredictor<E> implements PredictContributions {
   private final int _ncontribs;
