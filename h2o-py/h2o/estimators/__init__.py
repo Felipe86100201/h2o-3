@@ -13,6 +13,7 @@ from .deeplearning import H2OAutoEncoderEstimator
 from .deeplearning import H2ODeepLearningEstimator
 from .estimator_base import H2OEstimator
 from .gam import H2OGeneralizedAdditiveEstimator
+from .anovaglm import H2OAnovaGLMEstimator
 from .gbm import H2OGradientBoostingEstimator
 from .generic import H2OGenericEstimator
 from .glm import H2OGeneralizedLinearEstimator
