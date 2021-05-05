@@ -43,6 +43,7 @@ public class HdfsDelegationTokenRefresher implements Runnable {
         String authPrincipal = conf.get(H2O_AUTH_PRINCIPAL);
         if (authPrincipal == null) {
             log("Principal not provided, HDFS tokens will not be refreshed by H2O and their lifespan will be limited", null);
+            return;
         }
         String authKeytab = conf.get(H2O_AUTH_KEYTAB);
         if (authKeytab == null) {
@@ -50,7 +51,13 @@ public class HdfsDelegationTokenRefresher implements Runnable {
             return;
         }
         String authKeytabPath = writeKeytabToFile(authKeytab, tmpDir);
+        startRefresher(conf, authPrincipal, authKeytabPath, authUser);
+    }
+
+    public static void startRefresher(Configuration conf,
+                                      String authPrincipal, String authKeytabPath, String authUser) {
         new HdfsDelegationTokenRefresher(conf, authPrincipal, authKeytabPath, authUser).start();
+        
     }
 
     private static String writeKeytabToFile(String authKeytab, String tmpDir) throws IOException {
