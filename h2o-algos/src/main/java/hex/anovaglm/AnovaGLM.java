@@ -101,26 +101,30 @@ public class AnovaGLM extends ModelBuilder<AnovaGLMModel, AnovaGLMModel.AnovaGLM
     /***
      * This method will transform the training frame such that the constraints on the GLM parameters will be satisfied.  
      * Refer to Wendy Doc for more detail explanation.
-     * @return H2OFrame with transformed frame
      */
-    Frame[] adaptFrame() {
-      Frame[] newTFrames = new Frame[NUMBER_OF_MODELS];
+    void generateTransformedColumns() {
       _transformedColNames = new String[NUMBER_OF_MODELS][];
       _transformedCols = new Key[NUMBER_OF_MODELS];
-      transformFrame();  // transform individual columns only
-      
-      return newTFrames;
+      transformIndividualPredictor();  // transform individual predictors only
+      // transform interaction columns
+      final Frame vecsTransform = extractVec(new int[]{0,1}, _dinfo._adaptedFrame);
+      _transformedColNames[2] = generateTransformedColNames(vecsTransform);
+      final Frame transformedVecs = new Frame();
+      transformedVecs.add(DKV.getGet(_transformedCols[0])); // add first transformed predictors
+      transformedVecs.add(DKV.getGet(_transformedCols[1])); // add second transformed predictors
+      TransformInteractionColumns tInteractC = new TransformInteractionColumns(_degreeOfFreedom, 
+              _transformedColNames[2]).doAll(_degreeOfFreedom[2], Vec.T_NUM, transformedVecs);
+      Frame convertedCol = tInteractC.outputFrame(Key.make(), _transformedColNames[2], null);
+      _transformedCols[2] = convertedCol._key;
     }
     
-    void transformFrame() {
+    void transformIndividualPredictor() {
       int[] catNAFills = _dinfo.catNAFill();
       int numModelsMinus1 = NUMBER_OF_MODELS-1;
       RecursiveAction[] transformColumns = new RecursiveAction[numModelsMinus1];
       Frame trainFrame = _dinfo._adaptedFrame;  // first two columns are our predictors
-      int[] colInd; // store column indices to extraction from trainFrame
+      final Frame vec2Transform = extractVec(new int[]{0, 1}, trainFrame);
       for (int actionIndex = 0; actionIndex < numModelsMinus1; actionIndex++) {
-        colInd = new int[]{actionIndex};
-        final Frame vec2Transform = extractVec(colInd, trainFrame);
         _transformedColNames[actionIndex] = generateTransformedColNames(vec2Transform);
         transformColumns[actionIndex] = new ColumnTransformation(vec2Transform, _transformedColNames[actionIndex],
                 actionIndex, catNAFills);
@@ -154,7 +158,7 @@ public class AnovaGLM extends ModelBuilder<AnovaGLMModel, AnovaGLMModel.AnovaGLM
     @Override
     public void computeImpl() {
       init(true);
-      Frame[] newTrainFrames = adaptFrame();
+      generateTransformedColumns();
     }
   }
 }

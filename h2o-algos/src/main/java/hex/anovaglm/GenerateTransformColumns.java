@@ -8,8 +8,6 @@ import water.fvec.NewChunk;
 public class GenerateTransformColumns extends MRTask<GenerateTransformColumns> {
   final public String[] _newColNames;
   final public int _newColNumber;
-  final public boolean _transform1Col;
-  public long _nobs;
   public int _degOfFreedom;
   final public boolean _imputeMissing;
   final public int[] _catNAFills;
@@ -19,7 +17,6 @@ public class GenerateTransformColumns extends MRTask<GenerateTransformColumns> {
                                   int colIndex) {
     _newColNames = newColNames;
     _newColNumber = newColNames.length;
-    _transform1Col = (origFrame.numCols()==1);
     _degOfFreedom = origFrame.vec(colIndex).domain().length-1;
     _imputeMissing = imputeMissing;
     _catNAFills = catNAFills;
@@ -28,7 +25,7 @@ public class GenerateTransformColumns extends MRTask<GenerateTransformColumns> {
   
   @Override
   public void map(Chunk[] chk, NewChunk[] newChk) {
-    int numChkRows = chk[0].len();
+    int numChkRows = chk[_colIndex].len();
     double[] changedRow = new double[_newColNumber];  // pre-allocate array for reuse
     for (int rowInd = 0; rowInd < numChkRows; rowInd++) {
         int val = readCatVal(chk, rowInd, _colIndex);
@@ -37,13 +34,7 @@ public class GenerateTransformColumns extends MRTask<GenerateTransformColumns> {
         transformOneCol(changedRow, val, _degOfFreedom);
       for (int colInd = 0; colInd < _degOfFreedom; colInd++)
         newChk[colInd].addNum(changedRow[colInd]);
-      _nobs++;
     }
-  }
-  
-  @Override
-  public void reduce(GenerateTransformColumns gt) {
-    _nobs += gt._nobs;
   }
   
   public static void transformOneCol(double[] newRow, int val, int degOfFreedom) {
@@ -59,11 +50,13 @@ public class GenerateTransformColumns extends MRTask<GenerateTransformColumns> {
 
   public int readCatVal(Chunk[] chk, int rowInd, int colInd) {
     double val = chk[colInd].atd(rowInd);
-    if (Double.isNaN(val))
-      if (_imputeMissing)
-        return _catNAFills[colInd];
-      else
+    if (!_imputeMissing) {  // skip row with any NAs
+      double altVal = chk[(colInd+1)%2].atd(rowInd);
+      if (Double.isNaN(val) || Double.isNaN(altVal))
         return -1;
+    }
+    if (Double.isNaN(val))
+        return _catNAFills[colInd];
     else
       return (int) val;
   }
