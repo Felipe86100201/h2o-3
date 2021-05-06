@@ -127,6 +127,7 @@ task pythonVersion(type: Exec) {
         println(environment)
     }
     commandLine getOsSpecificCommandLine([pythonexe, "--version"])
+    commandLine getOsSpecificCommandLine(["pip", "list"])
 }
 
 
