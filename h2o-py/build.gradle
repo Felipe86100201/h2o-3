@@ -153,6 +153,7 @@ task cleanBuild(type: Delete) {
 // Define the dependencies
 //
 clean.dependsOn cleanBuild, cleanUpSmokeTest, cleanCoverageData
-buildDist.dependsOn buildClientDist // to have a predictable order of these 2 
+//buildDist.dependsOn buildClientDist // to have a predictable order of these 2 
+buildClientDist.dependsOn buildDist
 build.dependsOn copyMainDist
 buildClientDist.dependsOn pythonVersion
