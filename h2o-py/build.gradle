@@ -110,8 +110,7 @@ task buildClientDist(type: Exec, dependsOn: [verifyDependencies, createVersionFi
         standardOutput = new FileOutputStream(file("${buildDir}/client/tmp/h2o-py_buildDist.out"))
         println(environment)
     }
-    commandLine getOsSpecificCommandLine([pythonexe, "--version"])
-    commandLine getOsSpecificCommandLine(["pip", "list"])
+    commandLine getOsSpecificCommandLine(["pip", "install", "--upgrade", "--force-reinstall", "setuptools"])
     commandLine getOsSpecificCommandLine([pythonexe, "setup.py", "bdist_wheel", "--client"])
 }
 
