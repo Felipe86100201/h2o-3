@@ -3,7 +3,6 @@ package hex.tree;
 import hex.genmodel.algos.tree.SharedTreeNode;
 import hex.genmodel.algos.tree.SharedTreeSubgraph;
 import hex.genmodel.algos.tree.*;
-import hex.genmodel.attributes.parameters.Pair;
 import water.*;
 import water.fvec.Chunk;
 import water.fvec.Frame;
@@ -111,7 +110,7 @@ public abstract class SharedTreeModelWithContributions<
     types = ArrayUtils.append(types, Vec.T_NUM);
     domains[domains.length -1] = null;
 
-    return getScoreContributionsSoringTask(this, ArrayUtils.interval(0, contribNames.length), options)
+    return getScoreContributionsSoringTask(this, ArrayUtils.interval(0, contribNames.length - 1), options)
             .withPostMapAction(JobUpdatePostMap.forJob(j))
             .doAll(types, adaptFrm)
             .outputFrame(destination_key, outputNames, domains);
@@ -213,19 +212,20 @@ public abstract class SharedTreeModelWithContributions<
         // calculate Shapley values
         _treeSHAP.calculateContributions(input, contribs, 0, -1, workspace);
         doModelSpecificComputation(contribs);
-        Pair[] contribsSorted = (new ContributionComposer()).composeContributions(contribs, _contribNames, _options._topN, _options._topBottomN, _options._abs);
+        ContributionComposer contributionComposer = new ContributionComposer();
+        _contribNames = contributionComposer.composeContributions(contribs, _contribNames, _options._topN, _options._topBottomN, _options._abs);
 
         // Add contribs to new chunk
-        addContribToNewChunk(contribsSorted, nc);
+        addContribToNewChunk(contribs, _contribNames, nc);
       }
     }
 
-    protected void addContribToNewChunk(Pair<Integer, Double>[] contribs, NewChunk[] nc) {
+    protected void addContribToNewChunk(float[] contribs, Integer[] contribNamesSorted, NewChunk[] nc) {
       for (int i = 0, inputPointer = 0; i < nc.length-1; i+=2, inputPointer++) {
-        nc[i].addNum(contribs[inputPointer].getKey());
-        nc[i+1].addNum(contribs[inputPointer].getValue());
+        nc[i].addNum(contribNamesSorted[inputPointer]);
+        nc[i+1].addNum(contribs[contribNamesSorted[inputPointer]]);
       }
-      nc[nc.length-1].addNum(contribs[contribs.length-1].getValue()); // bias
+      nc[nc.length-1].addNum(contribs[contribs.length-1]); // bias
     }
   }
 }

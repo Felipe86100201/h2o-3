@@ -1,7 +1,7 @@
 package hex.genmodel.algos.tree;
 
 import hex.genmodel.PredictContributions;
-import hex.genmodel.attributes.parameters.Pair;
+import hex.genmodel.attributes.parameters.FeatureContribution;
 import hex.genmodel.utils.ArrayUtils;
 
 public abstract class ContributionsPredictor<E> implements PredictContributions {
@@ -45,9 +45,14 @@ public abstract class ContributionsPredictor<E> implements PredictContributions 
   }
 
   @Override
-  @SuppressWarnings("unchecked")
-  public Pair<String, Double>[] calculateContributions(double[] input, int topN, int topBottomN, boolean abs) {
-    return (Pair<String, Double>[]) contributionComposer.composeContributions(calculateContributions(input), _contribution_names, topN, topBottomN, abs);
+  public FeatureContribution[] calculateContributions(double[] input, int topN, int topBottomN, boolean abs) {
+    float[] contributions = calculateContributions(input);
+    Integer[] sorted = contributionComposer.composeContributions(contributions, ArrayUtils.interval(0, _contribution_names.length - 1, 1), topN, topBottomN, abs);
+    FeatureContribution[] out = new FeatureContribution[sorted.length];
+    for (int i = 0; i < sorted.length; i++) {
+      out[i] = new FeatureContribution(_contribution_names[sorted[i]], contributions[sorted[i]]);
+    }
+    return out;
   }
 }
 

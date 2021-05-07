@@ -214,4 +214,13 @@ public class ArrayUtils {
     }
   }
 
+  public static Integer[] interval(Integer start, Integer end, Integer step) {
+    int len = 1 + (end - start) / step; // Include both ends of interval
+    Integer[] result = new Integer[len];
+    for(int i = 0, value = start; i < len; i++, value += step) {
+      result[i] = value;
+    }
+    return result;
+  }
+
 }
