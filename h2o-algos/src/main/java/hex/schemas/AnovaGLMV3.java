@@ -42,6 +42,7 @@ public class AnovaGLMV3 extends ModelBuilderSchema<AnovaGLM, AnovaGLMV3, AnovaGL
             "class_sampling_factors",
             "max_after_balance_size",
             "max_runtime_secs",
+            "save_transformed_framekeys",
             "type" // GLM SS Type, only support 3 right now
     };
 
@@ -123,7 +124,10 @@ public class AnovaGLMV3 extends ModelBuilderSchema<AnovaGLM, AnovaGLMV3, AnovaGL
     @API(help = "Refer to the SS type 1, 2, 3, or 4.  We are currently only supporting 3", level = API.Level.critical)
     public int type;  // GLM SS Type, only support 3
 
-    @API(help="Stop early when there is no more relative improvement on train or validation (if provided)")
+    @API(help="Stop early when there is no more relative improvement on train or validation (if provided).")
     public boolean early_stopping;
+
+    @API(help="true to save the keys of transformed predictors and interaction column.")
+    public boolean save_transformed_framekeys;
   }
 }

@@ -29,6 +29,9 @@ public class AnovaGLMModelV3 extends ModelSchemaV3<AnovaGLMModel, AnovaGLMModelV
 
     @API(help="GLM standard error values.  For debugging purposes only")
     double[] glm_std_err;
+
+    @API(help="AnovaGLM transformed columns keys.  For debugging purposes only")
+    String[] _transformed_columns_keys;
   }
   public AnovaGLMV3.AnovaGLMParametersV3 createParametersSchema() { return new AnovaGLMV3.AnovaGLMParametersV3();}
   public AnovaGLMOutputV3 createOutputSchema() { return new AnovaGLMOutputV3();}

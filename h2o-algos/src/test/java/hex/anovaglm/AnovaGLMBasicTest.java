@@ -16,12 +16,15 @@ import static water.TestUtil.parseTestFile;
 @CloudSize(1)
 public class AnovaGLMBasicTest {
 
-  // first test to make sure parameter validation finishes
+  /**
+   * Test to check that training frame has been transformed correctly
+   */
   @Test
-  public void testAnovaGLM1() {
+  public void testFrameTransform() {
     try {
       Scope.enter();
-      Frame train = parseTestFile("smalldata/extdata/prostate.csv");
+      Frame correctFrame = parseTestFile("smalldata/anovaglm/MooreTransformed.csv");
+      Frame train = parseTestFile("smalldata/anovaglm/Moore.csv");
       train.replace(1, train.vec(1).toCategoricalVec()).remove();
       train.replace(3, train.vec(3).toCategoricalVec()).remove();
       DKV.put(train);
@@ -35,6 +38,35 @@ public class AnovaGLMBasicTest {
       params._weights_column = "AGE";
       params._offset_column = "GLEASON";
       params._ignored_columns = new String[]{"ID", "DPROS", "DCAPS", "PSA"};
+      params._save_transformed_framekeys = true;
+
+      AnovaGLMModel anovaG = new AnovaGLM(params).trainModel().get();
+      Scope.track_generic(anovaG);
+    } finally {
+      Scope.exit();
+    }
+  }
+
+  @Test
+  public void testWeightOffset() {
+    try {
+      Scope.enter();
+      Frame correctFrame = parseTestFile("smalldata/anovaglm/MooreTransformed.csv");
+      Frame train = parseTestFile("smalldata/anovaglm/Moore.csv");
+      train.replace(1, train.vec(1).toCategoricalVec()).remove();
+      train.replace(3, train.vec(3).toCategoricalVec()).remove();
+      DKV.put(train);
+      Scope.track(train);
+
+      AnovaGLMModel.AnovaGLMParameters params = new AnovaGLMModel.AnovaGLMParameters();
+      params._family = gaussian;
+      params._response_column = "VOL";
+      params._train = train._key;
+      params._solver = GLMModel.GLMParameters.Solver.IRLSM;
+      params._weights_column = "AGE";
+      params._offset_column = "GLEASON";
+      params._ignored_columns = new String[]{"ID", "DPROS", "DCAPS", "PSA"};
+      params._save_transformed_framekeys = true;
 
       AnovaGLMModel anovaG = new AnovaGLM(params).trainModel().get();
       Scope.track_generic(anovaG);

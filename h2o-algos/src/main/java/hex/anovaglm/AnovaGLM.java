@@ -2,7 +2,9 @@ package hex.anovaglm;
 
 import hex.DataInfo;
 import hex.ModelBuilder;
+import hex.ModelBuilderHelper;
 import hex.ModelCategory;
+import hex.glm.GLM;
 import hex.glm.GLMModel;
 import jsr166y.ForkJoinTask;
 import jsr166y.RecursiveAction;
@@ -12,8 +14,12 @@ import water.exceptions.H2OModelBuilderIllegalArgumentException;
 import water.fvec.Frame;
 import water.fvec.Vec;
 
-import static hex.anovaglm.AnovaGLMUtils.extractVec;
-import static hex.anovaglm.AnovaGLMUtils.generateTransformedColNames;
+import java.util.ArrayList;
+import java.util.List;
+
+import static hex.anovaglm.AnovaGLMUtils.*;
+import static hex.gam.MatrixFrameUtils.GamUtils.keepFrameKeys;
+import static hex.glm.GLMModel.GLMParameters;
 import static hex.glm.GLMModel.GLMParameters.Family.gaussian;
 import static hex.glm.GLMModel.GLMParameters.Family.tweedie;
 
@@ -22,6 +28,8 @@ public class AnovaGLM extends ModelBuilder<AnovaGLMModel, AnovaGLMModel.AnovaGLM
   DataInfo _dinfo;
   String[] _predictorNames; // store names of two predictors
   int[] _degreeOfFreedom;
+  String[] _modelNames; // store model description
+  Frame _weightOffsetFrame = null; // Frame storing weight and offset columns if present
   public AnovaGLM(boolean startup_once) { super (new AnovaGLMModel.AnovaGLMParameters(), startup_once); }
 
   public AnovaGLM(AnovaGLMModel.AnovaGLMParameters parms) {
@@ -63,32 +71,54 @@ public class AnovaGLM extends ModelBuilder<AnovaGLMModel, AnovaGLMModel.AnovaGLM
   public void init(boolean expensive) {
     super.init(expensive);
     if (expensive) {
-      _dinfo = new DataInfo(_train.clone(), _valid, 1, true, DataInfo.TransformType.NONE, 
-              DataInfo.TransformType.NONE, 
-              _parms.missingValuesHandling() == GLMModel.GLMParameters.MissingValuesHandling.Skip, 
-              _parms.imputeMissing(), _parms.makeImputer(), false, hasWeightCol(), hasOffsetCol(), 
-              hasFoldCol(), null);
-      validateAnovaGLMParameters();
-      _degreeOfFreedom = new int[NUMBER_OF_MODELS];
-      _degreeOfFreedom[0] = _dinfo._adaptedFrame.vec(0).domain().length-1;
-      _degreeOfFreedom[1] = _dinfo._adaptedFrame.vec(1).domain().length-1;
-      _degreeOfFreedom[2] = _degreeOfFreedom[0]*_degreeOfFreedom[1];
+      initValidateAnovaGLMParameters();
     }
   }
 
-  private void validateAnovaGLMParameters() {
+  /***
+   * Init and validate AnovaGLMParameters.
+   */
+  private void initValidateAnovaGLMParameters() {
     if (gaussian != _parms._family && tweedie != _parms._family)
-      error("_family", " only gaussian and tweedie families are supported here");
+      error("_family", " only gaussian and tweedie families are supported for now.");
 
     if (_parms._link == null)
       _parms._link = GLMModel.GLMParameters.Link.family_default;
+
+    DataInfo dinfo = new DataInfo(_train.clone(), _valid, 1, true, DataInfo.TransformType.NONE,
+            DataInfo.TransformType.NONE,
+            _parms.missingValuesHandling() == GLMModel.GLMParameters.MissingValuesHandling.Skip,
+            _parms.imputeMissing(), _parms.makeImputer(), false, hasWeightCol(), hasOffsetCol(),
+            hasFoldCol(), null);
     
-    if (!(_dinfo._nums == 0)) 
+    if (!(dinfo._nums == 0)) 
       error("_predictors", " all predictors must be categorical.");
     
-    if (!(_dinfo._cats == 2))
+    if (!(dinfo._cats == 2))
       error("_predictors", " there must be two and only two categorical predictors for AnovaGLM.");
+    
+    if (hasWeightCol() || hasOffsetCol()) {
+      int numWeightOffsetVecs = (hasWeightCol() ? 1 : 0) + (hasOffsetCol() ? 1 : 0);
+      ExtractWeigthOffsetVecs ewVec = new ExtractWeigthOffsetVecs(_parms, dinfo).doAll(numWeightOffsetVecs, Vec.T_NUM,
+              dinfo._adaptedFrame);
+      _weightOffsetFrame = ewVec.outputFrame(Key.make(), ewVec._colNames, null);
+    }
+    
+    _degreeOfFreedom = new int[NUMBER_OF_MODELS];
+    _degreeOfFreedom[0] = dinfo._adaptedFrame.vec(0).domain().length-1;
+    _degreeOfFreedom[1] = dinfo._adaptedFrame.vec(1).domain().length-1;
+    _degreeOfFreedom[2] = _degreeOfFreedom[0]*_degreeOfFreedom[1];
+    
+    _predictorNames = new String[NUMBER_OF_MODELS];
+    _predictorNames[0] = dinfo._adaptedFrame.name(0);
+    _predictorNames[1] = dinfo._adaptedFrame.name(1);
+    _predictorNames[2] = _predictorNames[0]+"_"+_predictorNames[1];
 
+    _modelNames = new String[NUMBER_OF_MODELS];
+    _modelNames[0] = "GLM Model with predictors "+_predictorNames[0]+", "+_predictorNames[2];
+    _modelNames[1] = "GLM Model with predictors "+_predictorNames[1]+", "+_predictorNames[2];
+    _modelNames[2] = "GLM Model with predictors "+_predictorNames[0]+", "+_predictorNames[1]+"_"+_predictorNames[2];
+    
     if (error_count() > 0)
       throw H2OModelBuilderIllegalArgumentException.makeFromBuilder(AnovaGLM.this);
   }
@@ -97,6 +127,54 @@ public class AnovaGLM extends ModelBuilder<AnovaGLMModel, AnovaGLMModel.AnovaGLM
     Key<AnovaGLMModel>[] _glmModels; // store all GLM models built
     String[][] _transformedColNames;   // stored column names for transformed columns
     Key<Frame>[] _transformedCols;  // store transformed column frame keys
+    Frame[] _trainingFrames;        // store generated frames
+    GLMParameters[] _glmParams;      // store GLMParameters needed to generate all the data
+    GLM[] _glmBuilder;               // store GLM Builders to be build in parallel
+    GLM[] _glmResults;
+    Key<Frame> _allTransformedCols;
+
+    public final void buildModel() {
+      AnovaGLMModel model = null;
+      try {
+        _trainingFrames = buildTrainingFrames(_transformedCols);  // build up training frames
+        addWeightOffsetRebalanceFrames();
+        _dinfo = new DataInfo(_trainingFrames[NUMBER_OF_MODELS-1].clone(), _valid, 1, true,
+                DataInfo.TransformType.NONE, DataInfo.TransformType.NONE, 
+                _parms.missingValuesHandling() == GLMModel.GLMParameters.MissingValuesHandling.Skip,
+                _parms.imputeMissing(), _parms.makeImputer(), false, hasWeightCol(), hasOffsetCol(),
+                hasFoldCol(), null);;
+        _glmParams = buildGLMParameters(_trainingFrames, _parms);
+        model = new AnovaGLMModel(dest(), _parms, new AnovaGLMModel.AnovaGLMOutput(AnovaGLM.this, _dinfo));
+        model.write_lock(_job);
+        _job.update(1, "calling GLM to build GLM models ...");
+        _glmBuilder = buildGLMBuilders(_glmParams);
+        _glmResults = ModelBuilderHelper.trainModelsParallel(_glmBuilder, NUMBER_OF_MODELS);  // build GLM models
+        _job.update(0, "extracting metrics from GLM models and building AnovaGLM outputs");
+      } finally {
+        final List<Key<Vec>> keep = new ArrayList<>();
+        if (model != null) {
+          if (_parms._save_transformed_framekeys) {
+            keepFrameKeys(keep, _allTransformedCols);
+            model._output._transformed_columns_key = _allTransformedCols.toString();
+          } else {
+            removeKeys(_transformedCols);
+          }
+        }
+      }
+    }
+
+    private void addWeightOffsetRebalanceFrames() {
+      for (int index = 0; index < NUMBER_OF_MODELS; index++) {
+        _trainingFrames[index] = new Frame(rebalance(_trainingFrames[index], false, _result +
+                ".temporary.train"));
+        if (_weightOffsetFrame != null) // add weight/offset columns if needed
+          _trainingFrames[index].add(_weightOffsetFrame);
+
+        DKV.put(_trainingFrames[index]);
+      }
+      if (_parms._save_transformed_framekeys)
+        _allTransformedCols = _trainingFrames[NUMBER_OF_MODELS - 1]._key;
+    }
 
     /***
      * This method will transform the training frame such that the constraints on the GLM parameters will be satisfied.  
@@ -159,6 +237,8 @@ public class AnovaGLM extends ModelBuilder<AnovaGLMModel, AnovaGLMModel.AnovaGLM
     public void computeImpl() {
       init(true);
       generateTransformedColumns();
+      _job.update(0, "Finished transforming training frame");
+      buildModel();
     }
   }
 }

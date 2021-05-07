@@ -56,6 +56,7 @@ public class AnovaGLMModel extends Model<AnovaGLMModel, AnovaGLMModel.AnovaGLMPa
     public boolean _remove_collinear_columns = true;
     public int _nfolds = 0; // disable cross-validation
     public Key<Frame> _plug_values = null;
+    public boolean _save_transformed_framekeys = false; // for debugging, save the transformed predictors/interaction
 
     @Override
     public String algoName() {
@@ -113,6 +114,7 @@ public class AnovaGLMModel extends Model<AnovaGLMModel, AnovaGLMModel.AnovaGLMPa
     final int _nclasses = 1;
     public String[][] _coefficient_names; // coefficient names of all models
     Family _family;
+    public String _transformed_columns_key;
 
     @Override
     public ModelCategory getModelCategory() { return ModelCategory.Regression; }
