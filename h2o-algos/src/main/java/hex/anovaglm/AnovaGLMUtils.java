@@ -28,20 +28,20 @@ public class AnovaGLMUtils {
     return extractedFrame;
   }
 
-  public static String[] generateTransformedColNames(Frame vec2Transform) {
-    if (vec2Transform.numCols() == 1) // one column to transform
-      return transformOneCol(vec2Transform);
+  public static String[] generateTransformedColNames(Frame vec2Transform, int colIndex) {
+    if (colIndex >= 0) // one column to transform
+      return transformOneCol(vec2Transform, colIndex);
     else
       return transformTwoCols(vec2Transform);
   }
   
-  public static String[] transformOneCol(Frame vec2Transform) {
-    String[] domains = vec2Transform.vec(0).domain();
-    String colName = vec2Transform.name(0);
+  public static String[] transformOneCol(Frame vec2Transform, int colInd) {
+    String[] domains = vec2Transform.vec(colInd).domain();
+    String colName = vec2Transform.name(colInd);
     int degOfFreedom = domains.length-1;
     String[] newColNames = new String[degOfFreedom];
-    for (int colIndex = 0; colIndex < degOfFreedom; colIndex++) 
-      newColNames[colIndex] = colName+"_"+domains[colIndex];
+    for (int domainInd = 0; domainInd < degOfFreedom; domainInd++) 
+      newColNames[domainInd] = colName+"_"+domains[domainInd];
     return newColNames;
   }
   
@@ -66,26 +66,43 @@ public class AnovaGLMUtils {
       DKV.remove(oneKey);
   }
 
-  public static Frame[] buildTrainingFrames(Key<Frame>[] transformedCols) {
-    int numberOfModels = transformedCols.length;
+  /***
+   * This method will take the frame that contains transformed columns of predictor A, predictor B, interaction
+   * of predictor A and B and generate new training frames that contains the following columns:
+   * - transformed columns of predictor A, interaction of predictor A and B, response
+   * - transformed columns of predictor B, interaction of predictor A and B, response
+   * - transformed columns of predictor A, predictor B, response
+   * - transformed columns of predictor A, predictor B, interaction of predictor A and B, response
+   * 
+   * @param transformedCols: contains frame key of frame containing transformed columns of predictor A, predictor B,
+   *                      interaction of predictor A and B
+   * @param numberOfModels: number of models to build.  For 2 factors, this should be 4.
+   * @return Array of predictors for the four models.
+   */
+  public static Frame[] buildTrainingFrames(Key<Frame> transformedCols, int numberOfModels, 
+                                            String[][] transformedColNames) {
     Frame[] trainingFrames = new Frame[numberOfModels];
-    int[][] predNums = new int[numberOfModels][];
+    int numFrames2Build = numberOfModels-1;
+    Frame allCols = DKV.getGet(transformedCols);  // contains all the transformed columns except response, weight/offset
+    trainingFrames[numFrames2Build] = allCols.clone();
+
+    int[][] predNums = new int[numFrames2Build][];
     predNums[0] = new int[]{0,2}; // first predictor and interaction 
     predNums[1] = new int[]{1,2}; // second predictor and interaction
-    predNums[2] = new int[]{0,1,2}; // first, second predictor and interaction
-    for (int index = 0; index < numberOfModels; index++) {
-      trainingFrames[index] = buildSpecificFrame(predNums[index], transformedCols);
+    predNums[2] = new int[]{0,1}; // first and second predictors
+
+    for (int index = 0; index < numFrames2Build; index++) {
+      trainingFrames[index] = buildSpecificFrame(predNums[index], allCols, transformedColNames);
     }
     return trainingFrames;
   }
   
-  public static Frame buildSpecificFrame(int[] predNums, Key<Frame>[] transformColKeys) {
+  public static Frame buildSpecificFrame(int[] predNums, Frame allCols, String[][] transformedColNames) {
     final Frame predVecs = new Frame();
     int numVecs = predNums.length;
     for (int index = 0; index < numVecs; index++) {
       int predVecNum = predNums[index];
-      Frame oneVec = DKV.getGet(transformColKeys[predVecNum]);
-      predVecs.add(oneVec);
+      predVecs.add(allCols.subframe(transformedColNames[predVecNum]));
     }
     return predVecs;
   }
@@ -99,7 +116,7 @@ public class AnovaGLMUtils {
       Field[] field1 = AnovaGLMParameters.class.getDeclaredFields();
       setParamField(parms, glmParams[index], false, field1, anovaGLMOnlyList);
       Field[] field2 = Model.Parameters.class.getDeclaredFields();
-      setParamField(parms, glmParams[index], false, field2, Arrays.asList());
+      setParamField(parms, glmParams[index], true, field2, Arrays.asList());
       glmParams[index]._train = trainingFrames[index]._key;
     }
     return glmParams;

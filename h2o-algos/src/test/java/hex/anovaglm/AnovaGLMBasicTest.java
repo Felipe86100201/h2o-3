@@ -25,23 +25,20 @@ public class AnovaGLMBasicTest {
       Scope.enter();
       Frame correctFrame = parseTestFile("smalldata/anovaglm/MooreTransformed.csv");
       Frame train = parseTestFile("smalldata/anovaglm/Moore.csv");
-      train.replace(1, train.vec(1).toCategoricalVec()).remove();
-      train.replace(3, train.vec(3).toCategoricalVec()).remove();
-      DKV.put(train);
+      Scope.track(correctFrame);
       Scope.track(train);
 
       AnovaGLMModel.AnovaGLMParameters params = new AnovaGLMModel.AnovaGLMParameters();
       params._family = gaussian;
-      params._response_column = "VOL";
+      params._response_column = "conformity";
       params._train = train._key;
       params._solver = GLMModel.GLMParameters.Solver.IRLSM;
-      params._weights_column = "AGE";
-      params._offset_column = "GLEASON";
-      params._ignored_columns = new String[]{"ID", "DPROS", "DCAPS", "PSA"};
+      params._ignored_columns = new String[]{"fscore"};
       params._save_transformed_framekeys = true;
-
       AnovaGLMModel anovaG = new AnovaGLM(params).trainModel().get();
       Scope.track_generic(anovaG);
+      Frame transformedFrame = DKV.getGet(anovaG._output._transformedColumnKey);
+      Scope.track(transformedFrame);
     } finally {
       Scope.exit();
     }
@@ -51,8 +48,7 @@ public class AnovaGLMBasicTest {
   public void testWeightOffset() {
     try {
       Scope.enter();
-      Frame correctFrame = parseTestFile("smalldata/anovaglm/MooreTransformed.csv");
-      Frame train = parseTestFile("smalldata/anovaglm/Moore.csv");
+      Frame train = parseTestFile("smalldata/extdata/prostate.csv");
       train.replace(1, train.vec(1).toCategoricalVec()).remove();
       train.replace(3, train.vec(3).toCategoricalVec()).remove();
       DKV.put(train);

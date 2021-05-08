@@ -115,11 +115,16 @@ public class AnovaGLMModel extends Model<AnovaGLMModel, AnovaGLMModel.AnovaGLMPa
     public String[][] _coefficient_names; // coefficient names of all models
     Family _family;
     public String _transformed_columns_key;
+    public Key<Frame> _transformedColumnKey;
 
     @Override
     public ModelCategory getModelCategory() { return ModelCategory.Regression; }
 
     public String[][] coefficientNames() { return _coefficient_names; }
+
+    public AnovaGLMOutput(AnovaGLM b) {
+      super(b);
+    }
 
     public AnovaGLMOutput(AnovaGLM b, DataInfo dinfo) {
       super(b, dinfo._adaptedFrame);
@@ -132,11 +137,14 @@ public class AnovaGLMModel extends Model<AnovaGLMModel, AnovaGLMModel.AnovaGLMPa
   @Override
   protected Futures remove_impl(Futures fs, boolean cascade) {
     super.remove_impl(fs, cascade);
+    Keyed.remove(_output._transformedColumnKey, fs, true);
     return fs;
   }
 
   @Override
   protected AutoBuffer writeAll_impl(AutoBuffer ab) {
+    if (_output._transformedColumnKey != null)
+      ab.putKey(_output._transformedColumnKey);
     return super.writeAll_impl(ab);
   }
 

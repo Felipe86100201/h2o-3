@@ -151,9 +151,10 @@ public class GamUtils {
                                    Field[] gamFields, List<String> excludeList) {
     // assign relevant GAMParameter fields to GLMParameter fields
     Field glmField;
+    boolean emptyExcludeList = excludeList.size() == 0;
     for (Field oneField : gamFields) {
       try {
-        if (!excludeList.contains(oneField.getName())) {
+        if (emptyExcludeList || !excludeList.contains(oneField.getName())) {
           if (superClassParams)
             glmField = glmParam.getClass().getSuperclass().getDeclaredField(oneField.getName());
           else
